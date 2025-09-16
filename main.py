@@ -1,5 +1,3 @@
-# Install necessary libs
-# pip install qdrant-client langchain sentence-transformers google-genai langchain-google-genai
 
 from qdrant_client import QdrantClient
 from langchain.schema import Document
