@@ -51,54 +51,93 @@ graph TB
     class A,B,D,I data
 ```
 
-## 🧠 Technical Overview
+## 🧠 Technical Implementation
 
 ### Core Components
 
-| Component | Technology | Purpose |
-|-----------|------------|---------|
-| Embedding Engine | Hugging Face (all-mpnet-base-v2) | Convert product specs into dense vectors |
-| Vector Store | Qdrant | Efficient similarity search and retrieval |
-| LLM Integration | Google Gemini 2.0 Flash | Natural language reasoning, explanation, price insights |
-| Multi-Agent System | LangChain + Python | Orchestrated retrieval, analysis, and pricing pipeline |
+| Component | Technology | Implementation |
+|-----------|------------|----------------|
+| Embedding Engine | Hugging Face (all-mpnet-base-v2) | `HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")` |
+| Vector Store | Qdrant | `Qdrant.from_documents()` with in-memory or cloud storage |
+| LLM Integration | Google Gemini 2.5 Pro | `ChatGoogleGenerativeAI(model="gemini-2.5-pro")` |
+| Document Processing | LangChain | `Document` objects with metadata for SKU mapping |
 
-### ⚙️ Agent Workflow
+### Key Dependencies
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant Retriever as Agent 1: Retriever
-    participant Analyzer as Agent 2: Analyzer
-    participant Recommender as Agent 3: Pricing Recommender
-    participant Qdrant as Vector DB
-    participant Gemini as LLM API
-    
-    User->>Retriever: Competitor Product
-    Retriever->>Qdrant: Query Vector Search
-    Qdrant-->>Retriever: Top-K Matches
-    
-    loop For each match
-        Retriever->>Analyzer: Competitor Spec + Our Spec
-        Analyzer->>Gemini: Compare Specs + Validate Match
-        Gemini-->>Analyzer: Explanation + Match Decision
-    end
-    
-    Analyzer->>Recommender: Match + Cost + Competitor Price
-    Recommender->>Gemini: Pricing Prompt
-    Gemini-->>Recommender: Recommended Price
-    Recommender-->>User: Final Report
+```bash
+# Core requirements
+qdrant-client          # Vector database client
+langchain              # LLM orchestration framework  
+sentence-transformers  # Hugging Face embeddings
+google-genai           # Google Gemini API
+langchain-google-genai # LangChain + Gemini integration
+```
+
+### Environment Setup
+
+The system supports multiple configuration methods:
+
+1. **Environment Variables**:
+   ```bash
+   export GOOGLE_API_KEY="your_api_key"
+   export QDRANT_API_KEY="optional_for_cloud"
+   export QDRANT_URL="optional_qdrant_url"
+   ```
+
+2. **Google Colab userdata** (automatically detected):
+   ```python
+   from google.colab import userdata
+   userdata.get('GOOGLE_API_KEY')
+   ```
+
+3. **In-memory mode** (default): Uses `:memory:` for Qdrant if no cloud config provided
+
+### ⚙️ Core Implementation Details
+
+The system uses a straightforward pipeline approach:
+
+```python
+# 1. Setup embeddings (Hugging Face or Google)
+embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+
+# 2. Create vector store with our products
+vectorstore = Qdrant.from_documents(documents=docs, embedding=embedding_model, url=":memory:")
+
+# 3. For each competitor product, find matches
+for competitor in competitors:
+    results = vectorstore.similarity_search_with_score(competitor["desc"], k=1)
+    matched_doc, score = results[0]
+
+# 4. Use Gemini LLM for analysis and explanations
+llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro")
+explanation = llm.invoke(analysis_prompt)
+```
+
+### Data Structure
+
+```python
+# Our product catalog format
+our_products = [
+    {"sku": "Y001", "desc": "Electrolytic Capacitor 100µF ±10%, 50V, radial, Ø5mm ×11mm"},
+    {"sku": "Y002", "desc": "Electrolytic Capacitor 220µF ±20%, 25V, radial, Ø6.3mm ×11mm"},
+    {"sku": "Y004", "desc": "MOSFET IRF540N N-Channel, 100V, 33A, Rds(on)=0.077Ω"},
+    # ... more products
+]
+
+# Competitor products to match
+competitors = [
+    {"sku": "C101", "desc": "Electrolytic Capacitor 100µF ±10%, 50V, radial, Ø5×11mm"},
+    {"sku": "C104", "desc": "MOSFET IRF540 N-Channel, 100V, 33A, Rds(on)=0.080Ω"},
+    # ... more competitor products
+]
 ```
 
 ## 📂 Project Structure
 
 ```
 Product_Matching/
-├── src/
-│   ├── main.py                 # Pipeline orchestrator
-│   ├── config.py               # API keys & settings
-│   ├── dummy_data.py           # Sample SKUs & competitor data
-│   ├── utils/                  # Helper functions
-│   └── requirements.txt        # Python dependencies
+├── main.py                     # Main pipeline script with ProductMatcher class
+├── requirements.txt            # Python dependencies
 ├── README.md                   # Documentation
 ├── .gitignore                  # Ignore files
 └── .venv/                      # Virtual environment
@@ -106,25 +145,61 @@ Product_Matching/
 
 ## 🧪 Example Usage
 
-### Input
+### Setup and Installation
+```bash
+# Install dependencies
+pip install qdrant-client langchain sentence-transformers google-genai langchain-google-genai
+
+# Set environment variables (or use Google Colab userdata)
+export GOOGLE_API_KEY="your_api_key_here"
+export QDRANT_API_KEY="your_qdrant_key"  # optional, for cloud instance
+export QDRANT_URL="your_qdrant_url"      # optional, defaults to :memory:
+```
+
+### Basic Usage
 ```python
-competitor_product = """
-MOSFET IRF540, Rds(on)=0.077Ω, 100V, 33A
-"""
+# Import required libraries
+from qdrant_client import QdrantClient
+from langchain.schema import Document
+from langchain.vectorstores import Qdrant
+from langchain.embeddings import HuggingFaceEmbeddings
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_genai.embeddings import GoogleGenerativeAIEmbeddings
+
+# Setup components
+qdrant_client = QdrantClient(url=":memory:")  # or your cloud URL
+hf_embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+
+# Your product catalog
+our_products = [
+    {"sku": "Y001", "desc": "Electrolytic Capacitor 100µF ±10%, 50V, radial, Ø5mm ×11mm"},
+    {"sku": "Y004", "desc": "MOSFET IRF540N N-Channel, 100V, 33A, Rds(on)=0.077Ω"},
+    # ... more products
+]
+
+# Create vector store
+docs = [Document(page_content=p["desc"], metadata={"sku": p["sku"]}) for p in our_products]
+vectorstore = Qdrant.from_documents(
+    documents=docs,
+    embedding=hf_embedding_model,
+    url=":memory:",
+    collection_name="our_products_hf"
+)
+
+# Run matching pipeline
+competitor_product = "MOSFET IRF540 N-Channel, 100V, 33A, Rds(on)=0.080Ω"
+matches = vectorstore.similarity_search_with_score(competitor_product, k=1)
 ```
 
 ### Output
 ```
-Match Found: ✅  
-Our SKU: IRF540N, Rds(on)=0.077Ω, 100V, 33A  
-Similarity Score: 0.92  
-
-Explanation:  
-Both products share identical specs. Our part has slightly better thermal efficiency.  
-
-Recommended Price:  
-Competitor Price: $2.50/unit  
-Suggested Price: $2.45/unit (Inventory high, price match strategy)  
+Competitor SKU: C104
+Our SKU: Y004
+HF Similarity: 0.92
+Explanation: Both products are N-Channel MOSFETs with nearly identical specifications. 
+The competitor part (IRF540) has slightly higher Rds(on) at 0.080Ω compared to our 
+IRF540N at 0.077Ω, making our part marginally more efficient. Voltage and current 
+ratings are identical at 100V/33A. This is an excellent match for cross-referencing.
 ```
 
 ## 📊 Evaluation Metrics
