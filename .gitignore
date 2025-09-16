@@ -4,3 +4,56 @@
 
 # LangGraph
 .langgraph_api/
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pkl
+*.log
+*.sqlite3
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Jupyter / Colab
+.ipynb_checkpoints/
+*.ipynb
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Qdrant local data
+qdrant_data/
+*.db
+*.db-journal
+
+# HuggingFace cache
+~/.cache/
+huggingface/
+
+# LangChain cache
+.langchain/
+
+# Colab userdata (sensitive)
+userdata.json
+
+# API keys / secrets
+*.env
+.env.local
+.env.*.local
+GOOGLE_API_KEY
+QDRANT_API_KEY
+secrets.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
