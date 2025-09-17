@@ -201,7 +201,7 @@ The competitor part (IRF540) has slightly higher Rds(on) at 0.080Ω compared to 
 IRF540N at 0.077Ω, making our part marginally more efficient. Voltage and current 
 ratings are identical at 100V/33A. This is an excellent match for cross-referencing.
 ```
-
+### FUTURE PROSPECTS FOR THE PROJECT (Estimated Values)
 ## 📊 Evaluation Metrics
 
 | Metric | Value | Description |
